@@ -210,57 +210,67 @@ function applyDarkMode(isDark) {
     document.body.classList.toggle('dark-mode', isDark);
 }
 
+// 로그인 확인 함수
+function checkAuth() {
+    if (!currentUser) {
+        alert('로그인이 필요합니다!\n로그인 페이지로 이동합니다.');
+        window.location.href = 'login.html';
+        return false;
+    }
+    return true;
+}
+
 // ==================================
 // 4. 데이터 로딩 및 초기화
 // ==================================
 async function loadAllData() {
     if (loadingSpinner) loadingSpinner.style.display = 'flex';
-    try {
-        // 사용자 정보 로드
-        const userResponse = await axios.get('/api/user');
-        currentUser = userResponse.data;
-        userInfo.innerHTML = `<p>안녕하세요, ${currentUser.nickname}님!</p><button id="logout-btn" style="background: none; border: none; color: #5c67f2; cursor: pointer; font-size: 0.9em; margin-top: 8px;">로그아웃</button>`;
+    
+    // 로컬 스토리지에서 사용자 정보 로드 (오프라인 모드)
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        userInfo.innerHTML = `<p>안녕하세요, ${currentUser.username}님!</p><button id="logout-btn" style="background: none; border: none; color: #5c67f2; cursor: pointer; font-size: 0.9em; margin-top: 8px;">로그아웃</button>`;
         
         // 로그아웃 버튼 이벤트 리스너 추가
         const logoutBtn = document.getElementById('logout-btn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', () => {
                 localStorage.removeItem('currentUser');
+                localStorage.removeItem('transactions');
+                localStorage.removeItem('assets');
                 window.location.href = 'login.html';
             });
         }
         
-        // 서버에서 데이터 로드
-        const [transactionResponse, assetResponse] = await Promise.all([
-            axios.get(`/api/transactions?userId=${currentUser.id}`),
-            axios.get(`/api/assets?userId=${currentUser.id}`)
-        ]);
+        // 로컬 스토리지에서 데이터 로드
+        const savedTransactions = localStorage.getItem('transactions');
+        const savedAssets = localStorage.getItem('assets');
         
-        transactions = transactionResponse.data;
-        assets = assetResponse.data;
+        transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
+        assets = savedAssets ? JSON.parse(savedAssets) : [];
         
         document.querySelector('.menu-item[data-page="asset-management-page"]').click();
-    } catch (error) {
-        console.error("데이터 로드 실패:", error);
-        // 오프라인 모드로 폴백
-        const savedUser = localStorage.getItem('currentUser');
-        if (savedUser) {
-            currentUser = JSON.parse(savedUser);
-            userInfo.innerHTML = `<p>안녕하세요, ${currentUser.nickname}님!</p><button id="logout-btn" style="background: none; border: none; color: #5c67f2; cursor: pointer; font-size: 0.9em; margin-top: 8px;">로그아웃</button>`;
-            
-            const savedTransactions = localStorage.getItem('transactions');
-            const savedAssets = localStorage.getItem('assets');
-            
-            transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
-            assets = savedAssets ? JSON.parse(savedAssets) : [];
-            
-            document.querySelector('.menu-item[data-page="asset-management-page"]').click();
-        } else {
-            window.location.href = 'login.html';
+    } else {
+        // 로그인하지 않은 사용자에게는 로그인 버튼 표시
+        userInfo.innerHTML = `<p>로그인이 필요합니다</p><button id="login-btn" style="background: #5c67f2; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.9em; margin-top: 8px;">로그인</button>`;
+        
+        // 로그인 버튼 이벤트 리스너 추가
+        const loginBtn = document.getElementById('login-btn');
+        if (loginBtn) {
+            loginBtn.addEventListener('click', () => {
+                window.location.href = 'login.html';
+            });
         }
-    } finally {
-        if (loadingSpinner) loadingSpinner.style.display = 'none';
+        
+        // 빈 데이터로 초기화
+        transactions = [];
+        assets = [];
+        
+        document.querySelector('.menu-item[data-page="asset-management-page"]').click();
     }
+    
+    if (loadingSpinner) loadingSpinner.style.display = 'none';
 }
 
 function initialize() {
@@ -282,7 +292,7 @@ function initialize() {
 // ==================================
 function setupEventListeners() {
     // 전체 문서에 삭제 버튼 이벤트 리스너 추가 (이벤트 위임)
-    document.addEventListener('click', (event) => {
+    document.addEventListener('click', async (event) => {
         if (event.target.classList.contains('delete-btn')) {
             console.log('전역 삭제 버튼 클릭됨'); // 디버깅용
             const listItem = event.target.closest('li');
@@ -294,19 +304,13 @@ function setupEventListeners() {
             console.log('삭제할 거래 ID:', transactionId); // 디버깅용
             
             if (confirm('정말 삭제하시겠습니까?')) {
-                try {
-                    await axios.delete(`/api/transactions?id=${transactionId}`);
-                    transactions = transactions.filter(t => t._id !== transactionId);
-                    localStorage.setItem('transactions', JSON.stringify(transactions)); // 오프라인 백업
-                    console.log('거래 삭제 완료, 남은 거래 수:', transactions.length);
-                    
-                    const activePage = document.querySelector('.menu-item.active').dataset.page;
-                    if (activePage === 'asset-management-page') updateAllUI();
-                    else if (activePage === 'transaction-history-page') renderCalendar(displayedMonth);
-                } catch (error) {
-                    console.error('삭제 중 오류:', error);
-                    alert('삭제 중 오류가 발생했습니다.');
-                }
+                transactions = transactions.filter(t => t._id !== transactionId);
+                localStorage.setItem('transactions', JSON.stringify(transactions));
+                console.log('거래 삭제 완료, 남은 거래 수:', transactions.length);
+                
+                const activePage = document.querySelector('.menu-item.active').dataset.page;
+                if (activePage === 'asset-management-page') updateAllUI();
+                else if (activePage === 'transaction-history-page') renderCalendar(displayedMonth);
             }
         }
     });
@@ -367,17 +371,11 @@ function setupEventListeners() {
                     target.innerHTML = '';
                     target.appendChild(input);
                     input.focus();
-                    const saveUpdate = async () => {
+                    const saveUpdate = () => {
                         const newValue = (field === 'amount') ? parseFloat(input.value.replace(/,/g, '')) || 0 : input.value;
                         if (newValue !== currentValue) {
-                            try {
-                                await axios.put(`/api/transactions?id=${transactionId}`, { [field]: newValue });
-                                transaction[field] = newValue;
-                                localStorage.setItem('transactions', JSON.stringify(transactions)); // 오프라인 백업
-                            } catch (error) { 
-                                console.error('Error updating transaction:', error);
-                                alert('수정 중 오류가 발생했습니다.');
-                            }
+                            transaction[field] = newValue;
+                            localStorage.setItem('transactions', JSON.stringify(transactions));
                         }
                         const activePage = document.querySelector('.menu-item.active').dataset.page;
                         if (activePage === 'asset-management-page') updateAllUI();
@@ -413,10 +411,12 @@ function setupEventListeners() {
     }
     
     if (formEl) {
-        formEl.addEventListener('submit', async (event) => {
+        formEl.addEventListener('submit', (event) => {
             event.preventDefault();
-            if (!currentUser) return;
+            if (!checkAuth()) return;
+            
             const newTransaction = { 
+                _id: Date.now().toString(), // 간단한 ID 생성
                 date: dateEl.value, 
                 description: descriptionEl.value, 
                 amount: parseFloat(amountEl.value), 
@@ -424,44 +424,35 @@ function setupEventListeners() {
                 type: typeEl.value,
                 userId: currentUser.id
             };
-            try {
-                const response = await axios.post('/api/transactions', newTransaction);
-                transactions.unshift(response.data);
-                localStorage.setItem('transactions', JSON.stringify(transactions)); // 오프라인 백업
-                updateAllUI();
-                formEl.reset();
-                if(dateEl) dateEl.valueAsDate = new Date();
-            } catch (error) { 
-                console.error("Error adding transaction:", error);
-                alert('거래내역 추가 중 오류가 발생했습니다.');
-            }
+            transactions.unshift(newTransaction);
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            updateAllUI();
+            formEl.reset();
+            if(dateEl) dateEl.valueAsDate = new Date();
         });
     }
 
     if (addAssetFormEl) {
-        addAssetFormEl.addEventListener('submit', async (event) => {
+        addAssetFormEl.addEventListener('submit', (event) => {
             event.preventDefault();
-            if(!currentUser) return;
+            if (!checkAuth()) return;
+            
             const newAsset = { 
+                _id: Date.now().toString(), // 간단한 ID 생성
                 name: assetNameEl.value, 
                 amount: parseFloat(assetAmountEl.value),
                 userId: currentUser.id
             };
-            try {
-                const response = await axios.post('/api/assets', newAsset);
-                assets.push(response.data);
-                localStorage.setItem('assets', JSON.stringify(assets)); // 오프라인 백업
-                updateAllUI();
-                addAssetFormEl.reset();
-            } catch (error) { 
-                console.error("Error adding asset:", error);
-                alert('자산 추가 중 오류가 발생했습니다.');
-            }
+            assets.push(newAsset);
+            localStorage.setItem('assets', JSON.stringify(assets));
+            updateAllUI();
+            addAssetFormEl.reset();
         });
     }
 
     if (editAssetsBtn) {
         editAssetsBtn.addEventListener('click', () => {
+            if (!checkAuth()) return;
             if (!assetEditModal) return;
             modalAssetList.innerHTML = '';
             assets.forEach(asset => {
@@ -483,35 +474,25 @@ function setupEventListeners() {
     }
 
     if (modalAssetList) {
-        modalAssetList.addEventListener('click', async (event) => {
+        modalAssetList.addEventListener('click', (event) => {
             if (event.target.classList.contains('delete-btn')) {
                 const item = event.target.closest('li');
                 const assetId = item.dataset.id;
                 if (confirm('이 자산을 정말 삭제하시겠습니까?')) {
-                    try {
-                        await axios.delete(`/api/assets?id=${assetId}`);
-                        assets = assets.filter(a => a._id !== assetId);
-                        localStorage.setItem('assets', JSON.stringify(assets)); // 오프라인 백업
-                        item.remove();
-                    } catch (error) { 
-                        alert('삭제 중 오류가 발생했습니다.');
-                    }
+                    assets = assets.filter(a => a._id !== assetId);
+                    localStorage.setItem('assets', JSON.stringify(assets));
+                    item.remove();
                 }
             }
         });
-        modalAssetList.addEventListener('change', async (event) => {
+        modalAssetList.addEventListener('change', (event) => {
             if (event.target.tagName === 'INPUT') {
                 const item = event.target.closest('li');
                 const assetId = item.dataset.id;
                 const newAmount = parseFloat(event.target.value) || 0;
-                try {
-                    await axios.put(`/api/assets?id=${assetId}`, { amount: newAmount });
-                    const assetToUpdate = assets.find(a => a._id === assetId);
-                    if(assetToUpdate) assetToUpdate.amount = newAmount;
-                    localStorage.setItem('assets', JSON.stringify(assets)); // 오프라인 백업
-                } catch (error) { 
-                    alert('금액 수정 중 오류가 발생했습니다.');
-                }
+                const assetToUpdate = assets.find(a => a._id === assetId);
+                if(assetToUpdate) assetToUpdate.amount = newAmount;
+                localStorage.setItem('assets', JSON.stringify(assets));
             }
         });
     }
@@ -525,21 +506,16 @@ function setupEventListeners() {
     }
     
     if (clearDataBtn) {
-        clearDataBtn.addEventListener('click', async () => {
-            if (!currentUser) return;
+        clearDataBtn.addEventListener('click', () => {
+            if (!checkAuth()) return;
             if (confirm('정말로 모든 거래내역과 자산을 삭제하시겠습니까?')) {
-                try {
-                    await axios.delete(`/api/data?userId=${currentUser.id}`);
-                    transactions = [];
-                    assets = [];
-                    localStorage.setItem('transactions', JSON.stringify(transactions));
-                    localStorage.setItem('assets', JSON.stringify(assets));
-                    updateAllUI();
-                    renderCalendar(new Date());
-                    renderStatistics('monthly');
-                } catch (error) {
-                    alert("데이터 삭제 중 오류가 발생했습니다.");
-                }
+                transactions = [];
+                assets = [];
+                localStorage.setItem('transactions', JSON.stringify(transactions));
+                localStorage.setItem('assets', JSON.stringify(assets));
+                updateAllUI();
+                renderCalendar(new Date());
+                renderStatistics('monthly');
             }
         });
     }

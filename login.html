@@ -3,41 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>간단 가계부 - 로그인</title>
+    <title>간단 가계부 - 회원가입/로그인</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="login-body">
     <div class="login-container">
         <h1>간단 가계부</h1>
-        <p>사용자명을 입력하고 가계부를 시작해보세요.</p>
-        <br>
-        <form id="login-form">
-            <input type="text" id="username-input" placeholder="사용자명을 입력하세요" required>
-            <button type="submit">시작하기</button>
+        <p>회원가입하고 가계부를 시작해보세요.</p>
+        
+        <!-- 탭 버튼 -->
+        <div class="auth-tabs">
+            <button class="tab-btn active" data-tab="signup">회원가입</button>
+            <button class="tab-btn" data-tab="login">로그인</button>
+        </div>
+        
+        <!-- 회원가입 폼 -->
+        <form id="signup-form" class="auth-form active">
+            <input type="text" id="signup-username" placeholder="사용자명" required>
+            <input type="email" id="signup-email" placeholder="이메일" required>
+            <input type="password" id="signup-password" placeholder="비밀번호 (최소 6자)" required minlength="6">
+            <button type="submit">회원가입</button>
         </form>
+        
+        <!-- 로그인 폼 -->
+        <form id="login-form" class="auth-form">
+            <input type="email" id="login-email" placeholder="이메일" required>
+            <input type="password" id="login-password" placeholder="비밀번호" required>
+            <button type="submit">로그인</button>
+        </form>
+        
+        <div id="auth-message" class="auth-message"></div>
     </div>
+    
     <script>
-        document.getElementById('login-form').addEventListener('submit', async function(e) {
+        // 탭 전환 기능
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                
+                // 탭 버튼 활성화
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // 폼 표시/숨김
+                document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
+                document.getElementById(tab + '-form').classList.add('active');
+                
+                // 메시지 초기화
+                document.getElementById('auth-message').textContent = '';
+            });
+        });
+        
+        // 회원가입 폼 처리
+        document.getElementById('signup-form').addEventListener('submit', function(e) {
             e.preventDefault();
-            const username = document.getElementById('username-input').value.trim();
-            if (username) {
-                const user = { nickname: username, id: 'user123' };
-                localStorage.setItem('currentUser', JSON.stringify(user));
+            const username = document.getElementById('signup-username').value.trim();
+            const email = document.getElementById('signup-email').value.trim();
+            const password = document.getElementById('signup-password').value;
+            
+            if (username && email && password) {
+                // 기존 사용자 확인
+                const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
+                const existingUser = existingUsers.find(u => u.email === email);
                 
-                // 서버에 사용자 정보 저장 (선택사항)
-                try {
-                    await fetch('/api/user', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(user)
-                    });
-                } catch (error) {
-                    console.log('서버 저장 실패, 로컬만 사용');
+                if (existingUser) {
+                    document.getElementById('auth-message').textContent = '이미 가입된 이메일입니다.';
+                    document.getElementById('auth-message').style.color = '#dc3545';
+                } else {
+                    // 새 사용자 생성
+                    const newUser = {
+                        id: Date.now().toString(),
+                        username: username,
+                        email: email,
+                        password: password, // 실제로는 해시화해야 함
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    existingUsers.push(newUser);
+                    localStorage.setItem('users', JSON.stringify(existingUsers));
+                    
+                    document.getElementById('auth-message').textContent = '회원가입이 완료되었습니다! 로그인해주세요.';
+                    document.getElementById('auth-message').style.color = '#28a745';
+                    
+                    // 로그인 탭으로 전환
+                    document.querySelector('[data-tab="login"]').click();
+                    
+                    // 폼 초기화
+                    this.reset();
                 }
+            }
+        });
+        
+        // 로그인 폼 처리
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            
+            if (email && password) {
+                const users = JSON.parse(localStorage.getItem('users') || '[]');
+                const user = users.find(u => u.email === email && u.password === password);
                 
-                window.location.href = 'index.html';
+                if (user) {
+                    // 로그인 성공
+                    localStorage.setItem('currentUser', JSON.stringify({
+                        id: user.id,
+                        username: user.username,
+                        email: user.email
+                    }));
+                    
+                    window.location.href = 'index.html';
+                } else {
+                    document.getElementById('auth-message').textContent = '이메일 또는 비밀번호가 올바르지 않습니다.';
+                    document.getElementById('auth-message').style.color = '#dc3545';
+                }
             }
         });
     </script>
