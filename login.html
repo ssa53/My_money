@@ -3,95 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>간단 가계부 - 회원가입/로그인</title>
+    <title>간단 가계부 - 로그인</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="login-body">
     <div class="login-container">
-        <h1>간단 가계부</h1>
-        <p>회원가입하고 가계부를 시작해보세요.</p>
-        
-        <!-- 탭 버튼 -->
-        <div class="auth-tabs">
-            <button class="tab-btn active" data-tab="signup">회원가입</button>
-            <button class="tab-btn" data-tab="login">로그인</button>
+        <div class="login-header">
+            <h1>간단 가계부</h1>
+            <p>가계부를 시작해보세요</p>
         </div>
         
-        <!-- 회원가입 폼 -->
-        <form id="signup-form" class="auth-form active">
-            <input type="text" id="signup-username" placeholder="사용자명" required>
-            <input type="email" id="signup-email" placeholder="이메일" required>
-            <input type="password" id="signup-password" placeholder="비밀번호 (최소 6자)" required minlength="6">
-            <button type="submit">회원가입</button>
+        <!-- 메인 로그인 폼 -->
+        <form id="login-form" class="main-auth-form">
+            <div class="form-group">
+                <input type="email" id="login-email" placeholder="이메일" required>
+            </div>
+            <div class="form-group">
+                <input type="password" id="login-password" placeholder="비밀번호" required>
+            </div>
+            <button type="submit" class="login-btn">로그인</button>
         </form>
         
-        <!-- 로그인 폼 -->
-        <form id="login-form" class="auth-form">
-            <input type="email" id="login-email" placeholder="이메일" required>
-            <input type="password" id="login-password" placeholder="비밀번호" required>
-            <button type="submit">로그인</button>
+        <!-- 하단 링크들 -->
+        <div class="auth-links">
+            <a href="#" id="signup-link">회원가입</a>
+            <span class="divider">|</span>
+            <a href="#" id="forgot-password-link">비밀번호 찾기</a>
+        </div>
+        
+        <!-- 회원가입 폼 (숨김) -->
+        <form id="signup-form" class="auth-form hidden">
+            <div class="form-group">
+                <input type="text" id="signup-username" placeholder="사용자명" required>
+            </div>
+            <div class="form-group">
+                <input type="email" id="signup-email" placeholder="이메일" required>
+            </div>
+            <div class="form-group">
+                <input type="password" id="signup-password" placeholder="비밀번호 (최소 6자)" required minlength="6">
+            </div>
+            <div class="form-group">
+                <input type="password" id="signup-confirm-password" placeholder="비밀번호 확인" required>
+            </div>
+            <button type="submit" class="signup-btn">회원가입</button>
+            <button type="button" class="back-to-login-btn">로그인으로 돌아가기</button>
+        </form>
+        
+        <!-- 비밀번호 찾기 폼 (숨김) -->
+        <form id="forgot-password-form" class="auth-form hidden">
+            <div class="form-group">
+                <input type="email" id="forgot-email" placeholder="가입한 이메일" required>
+            </div>
+            <button type="submit" class="forgot-btn">인증번호 발송</button>
+            <button type="button" class="back-to-login-btn">로그인으로 돌아가기</button>
+        </form>
+        
+        <!-- 인증번호 입력 폼 (숨김) -->
+        <form id="verify-code-form" class="auth-form hidden">
+            <div class="form-group">
+                <input type="text" id="verification-code" placeholder="인증번호 6자리" maxlength="6" required>
+            </div>
+            <div class="form-group">
+                <input type="password" id="new-password" placeholder="새 비밀번호" required minlength="6">
+            </div>
+            <div class="form-group">
+                <input type="password" id="confirm-new-password" placeholder="새 비밀번호 확인" required>
+            </div>
+            <button type="submit" class="verify-btn">비밀번호 변경</button>
+            <button type="button" class="back-to-login-btn">로그인으로 돌아가기</button>
         </form>
         
         <div id="auth-message" class="auth-message"></div>
     </div>
     
     <script>
-        // 탭 전환 기능
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tab = btn.dataset.tab;
-                
-                // 탭 버튼 활성화
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                
-                // 폼 표시/숨김
-                document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
-                document.getElementById(tab + '-form').classList.add('active');
-                
-                // 메시지 초기화
-                document.getElementById('auth-message').textContent = '';
+        // 폼 전환 기능
+        function showForm(formId) {
+            document.querySelectorAll('.auth-form').forEach(form => {
+                form.classList.add('hidden');
             });
+            document.getElementById(formId).classList.remove('hidden');
+            document.getElementById('auth-message').textContent = '';
+        }
+        
+        // 링크 클릭 이벤트
+        document.getElementById('signup-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            showForm('signup-form');
         });
         
-        // 회원가입 폼 처리
-        document.getElementById('signup-form').addEventListener('submit', function(e) {
+        document.getElementById('forgot-password-link').addEventListener('click', (e) => {
             e.preventDefault();
-            const username = document.getElementById('signup-username').value.trim();
-            const email = document.getElementById('signup-email').value.trim();
-            const password = document.getElementById('signup-password').value;
-            
-            if (username && email && password) {
-                // 기존 사용자 확인
-                const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
-                const existingUser = existingUsers.find(u => u.email === email);
-                
-                if (existingUser) {
-                    document.getElementById('auth-message').textContent = '이미 가입된 이메일입니다.';
-                    document.getElementById('auth-message').style.color = '#dc3545';
-                } else {
-                    // 새 사용자 생성
-                    const newUser = {
-                        id: Date.now().toString(),
-                        username: username,
-                        email: email,
-                        password: password, // 실제로는 해시화해야 함
-                        createdAt: new Date().toISOString()
-                    };
-                    
-                    existingUsers.push(newUser);
-                    localStorage.setItem('users', JSON.stringify(existingUsers));
-                    
-                    document.getElementById('auth-message').textContent = '회원가입이 완료되었습니다! 로그인해주세요.';
-                    document.getElementById('auth-message').style.color = '#28a745';
-                    
-                    // 로그인 탭으로 전환
-                    document.querySelector('[data-tab="login"]').click();
-                    
-                    // 폼 초기화
-                    this.reset();
-                }
-            }
+            showForm('forgot-password-form');
+        });
+        
+        // 돌아가기 버튼들
+        document.querySelectorAll('.back-to-login-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                showForm('login-form');
+            });
         });
         
         // 로그인 폼 처리
@@ -105,20 +115,129 @@
                 const user = users.find(u => u.email === email && u.password === password);
                 
                 if (user) {
-                    // 로그인 성공
                     localStorage.setItem('currentUser', JSON.stringify({
                         id: user.id,
                         username: user.username,
                         email: user.email
                     }));
-                    
                     window.location.href = 'index.html';
                 } else {
-                    document.getElementById('auth-message').textContent = '이메일 또는 비밀번호가 올바르지 않습니다.';
-                    document.getElementById('auth-message').style.color = '#dc3545';
+                    showMessage('이메일 또는 비밀번호가 올바르지 않습니다.', 'error');
                 }
             }
         });
+        
+        // 회원가입 폼 처리
+        document.getElementById('signup-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('signup-username').value.trim();
+            const email = document.getElementById('signup-email').value.trim();
+            const password = document.getElementById('signup-password').value;
+            const confirmPassword = document.getElementById('signup-confirm-password').value;
+            
+            if (password !== confirmPassword) {
+                showMessage('비밀번호가 일치하지 않습니다.', 'error');
+                return;
+            }
+            
+            if (username && email && password) {
+                const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
+                const existingUser = existingUsers.find(u => u.email === email);
+                
+                if (existingUser) {
+                    showMessage('이미 가입된 이메일입니다.', 'error');
+                } else {
+                    const newUser = {
+                        id: Date.now().toString(),
+                        username: username,
+                        email: email,
+                        password: password,
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    existingUsers.push(newUser);
+                    localStorage.setItem('users', JSON.stringify(existingUsers));
+                    
+                    showMessage('회원가입이 완료되었습니다! 로그인해주세요.', 'success');
+                    showForm('login-form');
+                    this.reset();
+                }
+            }
+        });
+        
+        // 비밀번호 찾기 폼 처리
+        document.getElementById('forgot-password-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('forgot-email').value.trim();
+            
+            if (email) {
+                const users = JSON.parse(localStorage.getItem('users') || '[]');
+                const user = users.find(u => u.email === email);
+                
+                if (user) {
+                    try {
+                        // 이메일 인증번호 발송 API 호출
+                        const response = await fetch('/api/send-verification', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ email })
+                        });
+                        
+                        if (response.ok) {
+                            showMessage('인증번호가 발송되었습니다. 이메일을 확인해주세요.', 'success');
+                            showForm('verify-code-form');
+                        } else {
+                            showMessage('인증번호 발송에 실패했습니다.', 'error');
+                        }
+                    } catch (error) {
+                        showMessage('인증번호 발송 중 오류가 발생했습니다.', 'error');
+                    }
+                } else {
+                    showMessage('가입되지 않은 이메일입니다.', 'error');
+                }
+            }
+        });
+        
+        // 인증번호 확인 폼 처리
+        document.getElementById('verify-code-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const code = document.getElementById('verification-code').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-new-password').value;
+            
+            if (newPassword !== confirmPassword) {
+                showMessage('비밀번호가 일치하지 않습니다.', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/verify-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ code, newPassword })
+                });
+                
+                if (response.ok) {
+                    showMessage('비밀번호가 성공적으로 변경되었습니다.', 'success');
+                    showForm('login-form');
+                } else {
+                    showMessage('인증번호가 올바르지 않습니다.', 'error');
+                }
+            } catch (error) {
+                showMessage('비밀번호 변경 중 오류가 발생했습니다.', 'error');
+            }
+        });
+        
+        // 메시지 표시 함수
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('auth-message');
+            messageEl.textContent = text;
+            messageEl.className = `auth-message ${type}`;
+        }
     </script>
 </body>
 </html>
