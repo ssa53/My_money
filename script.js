@@ -226,7 +226,7 @@ function checkAuth() {
 async function loadAllData() {
     if (loadingSpinner) loadingSpinner.style.display = 'flex';
     
-    // 로컬 스토리지에서 사용자 정보 로드 (오프라인 모드)
+    // 로컬 스토리지에서 사용자 정보 로드
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
@@ -243,12 +243,38 @@ async function loadAllData() {
             });
         }
         
-        // 로컬 스토리지에서 데이터 로드
-        const savedTransactions = localStorage.getItem('transactions');
-        const savedAssets = localStorage.getItem('assets');
-        
-        transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
-        assets = savedAssets ? JSON.parse(savedAssets) : [];
+        try {
+            // 서버에서 데이터 로드
+            const [transactionsResponse, assetsResponse] = await Promise.all([
+                fetch('/api/transactions'),
+                fetch('/api/assets')
+            ]);
+            
+            if (transactionsResponse.ok && assetsResponse.ok) {
+                transactions = await transactionsResponse.json();
+                assets = await assetsResponse.json();
+                
+                // 로컬 스토리지에도 저장 (오프라인 백업)
+                localStorage.setItem('transactions', JSON.stringify(transactions));
+                localStorage.setItem('assets', JSON.stringify(assets));
+            } else {
+                // 서버 오류 시 로컬 스토리지에서 로드
+                console.log('서버에서 데이터를 가져올 수 없어 로컬 데이터를 사용합니다.');
+                const savedTransactions = localStorage.getItem('transactions');
+                const savedAssets = localStorage.getItem('assets');
+                
+                transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
+                assets = savedAssets ? JSON.parse(savedAssets) : [];
+            }
+        } catch (error) {
+            // 네트워크 오류 시 로컬 스토리지에서 로드
+            console.log('네트워크 오류로 로컬 데이터를 사용합니다:', error);
+            const savedTransactions = localStorage.getItem('transactions');
+            const savedAssets = localStorage.getItem('assets');
+            
+            transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
+            assets = savedAssets ? JSON.parse(savedAssets) : [];
+        }
         
         document.querySelector('.menu-item[data-page="asset-management-page"]').click();
     } else {
@@ -411,7 +437,7 @@ function setupEventListeners() {
     }
     
     if (formEl) {
-        formEl.addEventListener('submit', (event) => {
+        formEl.addEventListener('submit', async (event) => {
             event.preventDefault();
             if (!checkAuth()) return;
             
@@ -424,16 +450,42 @@ function setupEventListeners() {
                 type: typeEl.value,
                 userId: currentUser.id || currentUser._id
             };
-            transactions.unshift(newTransaction);
-            localStorage.setItem('transactions', JSON.stringify(transactions));
-            updateAllUI();
-            formEl.reset();
-            if(dateEl) dateEl.valueAsDate = new Date();
+            
+            try {
+                // 서버에 거래내역 추가
+                const response = await fetch('/api/transactions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(newTransaction)
+                });
+                
+                if (response.ok) {
+                    const savedTransaction = await response.json();
+                    transactions.unshift(savedTransaction);
+                    localStorage.setItem('transactions', JSON.stringify(transactions));
+                    updateAllUI();
+                    formEl.reset();
+                    if(dateEl) dateEl.valueAsDate = new Date();
+                } else {
+                    console.error('거래내역 저장 실패');
+                    alert('거래내역 저장에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('네트워크 오류:', error);
+                // 오프라인 모드: 로컬 스토리지만 사용
+                transactions.unshift(newTransaction);
+                localStorage.setItem('transactions', JSON.stringify(transactions));
+                updateAllUI();
+                formEl.reset();
+                if(dateEl) dateEl.valueAsDate = new Date();
+            }
         });
     }
 
     if (addAssetFormEl) {
-        addAssetFormEl.addEventListener('submit', (event) => {
+        addAssetFormEl.addEventListener('submit', async (event) => {
             event.preventDefault();
             if (!checkAuth()) return;
             
@@ -443,10 +495,35 @@ function setupEventListeners() {
                 amount: parseFloat(assetAmountEl.value),
                 userId: currentUser.id || currentUser._id
             };
-            assets.push(newAsset);
-            localStorage.setItem('assets', JSON.stringify(assets));
-            updateAllUI();
-            addAssetFormEl.reset();
+            
+            try {
+                // 서버에 자산 추가
+                const response = await fetch('/api/assets', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(newAsset)
+                });
+                
+                if (response.ok) {
+                    const savedAsset = await response.json();
+                    assets.push(savedAsset);
+                    localStorage.setItem('assets', JSON.stringify(assets));
+                    updateAllUI();
+                    addAssetFormEl.reset();
+                } else {
+                    console.error('자산 저장 실패');
+                    alert('자산 저장에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('네트워크 오류:', error);
+                // 오프라인 모드: 로컬 스토리지만 사용
+                assets.push(newAsset);
+                localStorage.setItem('assets', JSON.stringify(assets));
+                updateAllUI();
+                addAssetFormEl.reset();
+            }
         });
     }
 
