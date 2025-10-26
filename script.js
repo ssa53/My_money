@@ -236,18 +236,18 @@ async function loadAllData() {
         const logoutBtn = document.getElementById('logout-btn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', () => {
+                // 사용자 정보만 삭제 (데이터는 서버에 저장되어 있음)
                 localStorage.removeItem('currentUser');
-                localStorage.removeItem('transactions');
-                localStorage.removeItem('assets');
+                localStorage.removeItem('authToken');
                 window.location.href = 'login.html';
             });
         }
         
         try {
-            // 서버에서 데이터 로드
+            // 서버에서 데이터 로드 (사용자별 필터링)
             const [transactionsResponse, assetsResponse] = await Promise.all([
-                fetch('/api/transactions'),
-                fetch('/api/assets')
+                fetch(`/api/transactions?userId=${currentUser.id || currentUser._id}`),
+                fetch(`/api/assets?userId=${currentUser.id || currentUser._id}`)
             ]);
             
             if (transactionsResponse.ok && assetsResponse.ok) {
@@ -257,6 +257,8 @@ async function loadAllData() {
                 // 로컬 스토리지에도 저장 (오프라인 백업)
                 localStorage.setItem('transactions', JSON.stringify(transactions));
                 localStorage.setItem('assets', JSON.stringify(assets));
+                
+                console.log(`서버에서 데이터 로드 완료: 거래내역 ${transactions.length}개, 자산 ${assets.length}개`);
             } else {
                 // 서버 오류 시 로컬 스토리지에서 로드
                 console.log('서버에서 데이터를 가져올 수 없어 로컬 데이터를 사용합니다.');
@@ -265,6 +267,8 @@ async function loadAllData() {
                 
                 transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
                 assets = savedAssets ? JSON.parse(savedAssets) : [];
+                
+                console.log(`로컬 데이터 로드: 거래내역 ${transactions.length}개, 자산 ${assets.length}개`);
             }
         } catch (error) {
             // 네트워크 오류 시 로컬 스토리지에서 로드
