@@ -1,6 +1,17 @@
-const path = require('path');
-const clientPromise = require(path.join(__dirname, '../../lib/mongodb'));
+const { MongoClient } = require('mongodb');
 const bcrypt = require('bcryptjs');
+
+// MongoDB 연결 함수
+async function connectToDatabase() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error('MONGODB_URI environment variable is not set');
+  }
+  
+  const client = new MongoClient(uri);
+  await client.connect();
+  return client.db('budget-app');
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -15,8 +26,7 @@ module.exports = async function handler(req, res) {
     }
 
     // MongoDB 연결
-    const client = await clientPromise;
-    const db = client.db('budget-app');
+    const db = await connectToDatabase();
 
     // 사용자 찾기
     const user = await db.collection('users').findOne({ 

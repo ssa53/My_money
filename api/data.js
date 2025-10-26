@@ -1,5 +1,16 @@
-const path = require('path');
-const { connectToDatabase } = require(path.join(__dirname, '../../lib/mongodb'));
+const { MongoClient } = require('mongodb');
+
+// MongoDB 연결 함수
+async function connectToDatabase() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error('MONGODB_URI environment variable is not set');
+  }
+  
+  const client = new MongoClient(uri);
+  await client.connect();
+  return client.db('budget-app');
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'DELETE') {
