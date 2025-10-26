@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>간단 가계부 - 로그인</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="login-body">
+    <div class="login-container">
+        <h1>간단 가계부</h1>
+        <p>사용자명을 입력하고 가계부를 시작해보세요.</p>
+        <br>
+        <form id="login-form">
+            <input type="text" id="username-input" placeholder="사용자명을 입력하세요" required>
+            <button type="submit">시작하기</button>
+        </form>
+    </div>
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username-input').value.trim();
+            if (username) {
+                const user = { nickname: username, id: 'user123' };
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                
+                // 서버에 사용자 정보 저장 (선택사항)
+                try {
+                    await fetch('/api/user', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(user)
+                    });
+                } catch (error) {
+                    console.log('서버 저장 실패, 로컬만 사용');
+                }
+                
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>간단 가계부</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="loading-spinner" class="spinner-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="sidebar-header">MENU</div>
+            <div id="user-info" class="user-info"></div>
+            <ul class="menu-list">
+                <li class="menu-item active" data-page="asset-management-page">자산 관리</li>
+                <li class="menu-item" data-page="statistics-page">통계 보기</li>
+                <li class="menu-item" data-page="transaction-history-page">지출 내역</li>
+                <li class="menu-item" data-page="settings-page">환경설정</li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div id="asset-management-page" style="display: none;">
+                <div class="summary">
+                    <h2>자산 현황</h2>
+                    <div id="total-balance-korean" class="total-balance-display"></div>
+                    <div class="chart-container">
+                        <div id="asset-empty-state" class="empty-state" style="display: none;">
+                            <p>첫 자산을 추가하여 자산 관리를 시작해보세요!</p>
+                        </div>
+                        <canvas id="assetChart"></canvas>
+                    </div>
+                    <form id="add-asset-form">
+                        <button type="button" id="edit-assets-btn" class="button-secondary">수정</button>
+                        <input type="text" id="asset-name" placeholder="자산 이름 (ex. 주식, 예금)" required>
+                        <input type="text" id="asset-amount" placeholder="초기 금액" inputmode="numeric" pattern="[0-9]*" required>
+                        <button type="submit">자산 추가</button>
+                    </form>
+                </div>
+                <div class="input-form">
+                    <h2>소득 / 지출 추가하기</h2>
+                    <form id="transaction-form">
+                        <input type="date" id="date" required>
+                        <input type="text" id="amount" placeholder="금액 (숫자)" inputmode="numeric" pattern="[0-9]*" required>
+                        <input type="text" id="description" placeholder="내역을 입력하세요" lang="ko" inputmode="text" autocapitalize="none" autocorrect="off" autocomplete="off" required>
+                        <input type="text" id="beomju-input" name="beomju-input" placeholder="카테고리" lang="ko" inputmode="text" autocapitalize="none" autocorrect="off" autocomplete="off" required>
+                        <select id="type">
+                            <option value="expense" selected>지출 (-)</option>
+                            <option value="income">소득 (+)</option>
+                        </select>
+                        <button type="submit">추가</button>
+                    </form>
+                </div>
+                <div class="history">
+                    <h2>거래 내역 (최근 7일)</h2>
+                    <div id="transaction-empty-state" class="empty-state" style="display: none;">
+                        <p>최근 7일간 거래 내역이 없습니다.</p>
+                    </div>
+                    <ul id="transaction-list"></ul>
+                </div>
+            </div>
+
+            <div id="statistics-page" style="display: none;">
+                <h2>통계 보기</h2>
+                <div class="stats-tabs">
+                    <button class="stats-tab-btn active" data-period="monthly">이번 달</button>
+                    <button class="stats-tab-btn" data-period="weekly">이번 주</button>
+                    <button class="stats-tab-btn" data-period="yearly">올해</button>
+                </div>
+                <div class="stats-content">
+                    <div class="stats-summary">
+                        <p class="income-stat">수입: <span id="stats-income">0원</span></p>
+                        <p class="expense-stat">지출: <span id="stats-expense">0원</span></p>
+                        <p class="comparison-stat" id="stats-comparison"></p>
+                    </div>
+                    <div class="stats-chart-container">
+                        <canvas id="category-expense-chart"></canvas>
+                        <div id="stats-empty-state" class="empty-state" style="display: none;">
+                            <p>해당 기간에 지출 내역이 없습니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="transaction-history-page" style="display: none;">
+                <h2>지출 내역</h2>
+                <div class="month-navigator">
+                    <button id="prev-month-btn" class="button-secondary">&lt;</button>
+                    <h3 id="current-month-display"></h3>
+                    <button id="next-month-btn" class="button-secondary">&gt;</button>
+                </div>
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+                    </div>
+                    <div id="calendar-grid" class="calendar-grid"></div>
+                </div>
+                <div id="calendar-details" class="history" style="display: none; margin-top: 20px;">
+                    <h3 id="details-title"></h3>
+                    <ul id="details-transaction-list" class="transaction-list-full"></ul>
+                </div>
+            </div>
+
+            <div id="settings-page" style="display: none;">
+                <h2>환경설정</h2>
+                <div class="settings-block">
+                    <h3>기능 설정</h3>
+                    <div class="setting-item">
+                        <p>다크 모드</p>
+                        <label class="switch">
+                            <input type="checkbox" id="dark-mode-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <p>모든 데이터 초기화</p>
+                        <button id="clear-data-btn">모든 데이터 삭제</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="asset-edit-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3>자산 수정 및 삭제</h3>
+            <ul id="modal-asset-list"></ul>
+            <button id="modal-close-btn">완료</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
