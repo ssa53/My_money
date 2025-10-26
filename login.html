@@ -166,7 +166,7 @@
         });
         
         // 비밀번호 찾기 폼 처리
-        document.getElementById('forgot-password-form').addEventListener('submit', async function(e) {
+        document.getElementById('forgot-password-form').addEventListener('submit', function(e) {
             e.preventDefault();
             const email = document.getElementById('forgot-email').value.trim();
             
@@ -175,25 +175,18 @@
                 const user = users.find(u => u.email === email);
                 
                 if (user) {
-                    try {
-                        // 이메일 인증번호 발송 API 호출
-                        const response = await fetch('/api/send-verification', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ email })
-                        });
-                        
-                        if (response.ok) {
-                            showMessage('인증번호가 발송되었습니다. 이메일을 확인해주세요.', 'success');
-                            showForm('verify-code-form');
-                        } else {
-                            showMessage('인증번호 발송에 실패했습니다.', 'error');
-                        }
-                    } catch (error) {
-                        showMessage('인증번호 발송 중 오류가 발생했습니다.', 'error');
-                    }
+                    // 간단한 인증번호 생성 (실제로는 이메일 발송 필요)
+                    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+                    
+                    // 로컬 스토리지에 임시 저장
+                    localStorage.setItem('tempVerificationCode', verificationCode);
+                    localStorage.setItem('tempEmail', email);
+                    
+                    // 실제 환경에서는 이메일로 발송
+                    alert(`인증번호: ${verificationCode}\n\n실제 환경에서는 이메일로 발송됩니다.`);
+                    
+                    showMessage('인증번호가 발송되었습니다. 이메일을 확인해주세요.', 'success');
+                    showForm('verify-code-form');
                 } else {
                     showMessage('가입되지 않은 이메일입니다.', 'error');
                 }
@@ -201,7 +194,7 @@
         });
         
         // 인증번호 확인 폼 처리
-        document.getElementById('verify-code-form').addEventListener('submit', async function(e) {
+        document.getElementById('verify-code-form').addEventListener('submit', function(e) {
             e.preventDefault();
             const code = document.getElementById('verification-code').value;
             const newPassword = document.getElementById('new-password').value;
@@ -212,23 +205,29 @@
                 return;
             }
             
-            try {
-                const response = await fetch('/api/verify-code', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ code, newPassword })
-                });
+            const savedCode = localStorage.getItem('tempVerificationCode');
+            const savedEmail = localStorage.getItem('tempEmail');
+            
+            if (code === savedCode && savedEmail) {
+                // 비밀번호 업데이트
+                const users = JSON.parse(localStorage.getItem('users') || '[]');
+                const userIndex = users.findIndex(u => u.email === savedEmail);
                 
-                if (response.ok) {
+                if (userIndex !== -1) {
+                    users[userIndex].password = newPassword;
+                    localStorage.setItem('users', JSON.stringify(users));
+                    
+                    // 임시 데이터 삭제
+                    localStorage.removeItem('tempVerificationCode');
+                    localStorage.removeItem('tempEmail');
+                    
                     showMessage('비밀번호가 성공적으로 변경되었습니다.', 'success');
                     showForm('login-form');
                 } else {
-                    showMessage('인증번호가 올바르지 않습니다.', 'error');
+                    showMessage('사용자를 찾을 수 없습니다.', 'error');
                 }
-            } catch (error) {
-                showMessage('비밀번호 변경 중 오류가 발생했습니다.', 'error');
+            } else {
+                showMessage('인증번호가 올바르지 않습니다.', 'error');
             }
         });
         
