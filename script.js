@@ -230,7 +230,7 @@ async function loadAllData() {
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
-        userInfo.innerHTML = `<p>안녕하세요, ${currentUser.username}님!</p><button id="logout-btn" style="background: none; border: none; color: #5c67f2; cursor: pointer; font-size: 0.9em; margin-top: 8px;">로그아웃</button>`;
+        userInfo.innerHTML = `<p>안녕하세요, ${currentUser.name || currentUser.username}님!</p><button id="logout-btn" style="background: none; border: none; color: #5c67f2; cursor: pointer; font-size: 0.9em; margin-top: 8px;">로그아웃</button>`;
         
         // 로그아웃 버튼 이벤트 리스너 추가
         const logoutBtn = document.getElementById('logout-btn');
@@ -422,7 +422,7 @@ function setupEventListeners() {
                 amount: parseFloat(amountEl.value), 
                 category: categoryEl.value, 
                 type: typeEl.value,
-                userId: currentUser.id
+                userId: currentUser.id || currentUser._id
             };
             transactions.unshift(newTransaction);
             localStorage.setItem('transactions', JSON.stringify(transactions));
@@ -441,7 +441,7 @@ function setupEventListeners() {
                 _id: Date.now().toString(), // 간단한 ID 생성
                 name: assetNameEl.value, 
                 amount: parseFloat(assetAmountEl.value),
-                userId: currentUser.id
+                userId: currentUser.id || currentUser._id
             };
             assets.push(newAsset);
             localStorage.setItem('assets', JSON.stringify(assets));
