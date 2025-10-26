@@ -200,11 +200,19 @@ h1, h2, h3 {
 }
 
 .auth-form.hidden {
-    display: none;
+    display: none !important;
 }
 
 .auth-form:not(.hidden) {
     display: block;
+}
+
+.main-auth-form {
+    margin-bottom: 20px;
+}
+
+.main-auth-form.hidden {
+    display: none !important;
 }
 
 .signup-btn, .forgot-btn, .verify-btn {

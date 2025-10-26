@@ -79,10 +79,18 @@
     <script>
         // 폼 전환 기능
         function showForm(formId) {
-            document.querySelectorAll('.auth-form').forEach(form => {
+            // 모든 폼 숨기기
+            document.querySelectorAll('.auth-form, .main-auth-form').forEach(form => {
                 form.classList.add('hidden');
             });
-            document.getElementById(formId).classList.remove('hidden');
+            
+            // 선택된 폼만 보이기
+            const targetForm = document.getElementById(formId);
+            if (targetForm) {
+                targetForm.classList.remove('hidden');
+            }
+            
+            // 메시지 초기화
             document.getElementById('auth-message').textContent = '';
         }
         
