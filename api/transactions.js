@@ -12,9 +12,10 @@ async function connectToDatabase() {
   return client.db('budget-app');
 }
 
-export default async function handler(req, res) {
-  const { db } = await connectToDatabase();
-  const collection = db.collection('transactions');
+module.exports = async function handler(req, res) {
+  try {
+    const db = await connectToDatabase();
+    const collection = db.collection('transactions');
 
   switch (req.method) {
     case 'GET':
@@ -83,4 +84,8 @@ export default async function handler(req, res) {
       res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
       res.status(405).end(`Method ${req.method} Not Allowed`);
   }
-}
+  } catch (error) {
+    console.error('Database connection error:', error);
+    res.status(500).json({ error: 'Database connection failed' });
+  }
+};
