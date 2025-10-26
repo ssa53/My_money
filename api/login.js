@@ -1,4 +1,5 @@
-const clientPromise = require('../../lib/mongodb');
+const path = require('path');
+const clientPromise = require(path.join(__dirname, '../../lib/mongodb'));
 const bcrypt = require('bcryptjs');
 
 module.exports = async function handler(req, res) {

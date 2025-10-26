@@ -1,4 +1,5 @@
-import { connectToDatabase } from '../../lib/mongodb';
+const path = require('path');
+const { connectToDatabase } = require(path.join(__dirname, '../../lib/mongodb'));
 
 export default async function handler(req, res) {
   if (req.method !== 'DELETE') {
