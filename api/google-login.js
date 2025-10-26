@@ -3,7 +3,9 @@ const jwt = require('jsonwebtoken');
 
 // MongoDB 연결 함수
 async function connectToDatabase() {
-  const uri = process.env.MONGODB_URI;
+  // 임시 하드코딩 (테스트용)
+  const uri = process.env.MONGODB_URI || 'mongodb+srv://test:test@cluster0.mongodb.net/budget-app?retryWrites=true&w=majority';
+  
   if (!uri) {
     throw new Error('MONGODB_URI environment variable is not set');
   }
@@ -19,6 +21,12 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    // 환경변수 디버깅
+    console.log('Environment variables check:');
+    console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET');
+    console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'SET' : 'NOT SET');
+    console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'SET' : 'NOT SET');
+    
     const { credential } = req.body;
 
     if (!credential) {
