@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>간단 가계부 - 로그인</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="login-body">
     <div class="login-container">
@@ -27,49 +28,64 @@
         <div id="auth-message" class="auth-message"></div>
     </div>
     
-    <script>
-        // Google 로그인 버튼 이벤트 (간단한 데모 버전)
-        document.getElementById('google-login-btn').addEventListener('click', async function() {
-            try {
-                // 데모용 Google 사용자 정보 (실제로는 Google OAuth 사용)
-                const demoGoogleUser = {
-                    email: 'demo@gmail.com',
-                    name: '데모 사용자',
-                    picture: 'https://via.placeholder.com/100',
-                    token: 'demo-google-token'
-                };
-                
-                // 서버에 Google 토큰 전송
-                const response = await fetch('/api/google-login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ googleToken: demoGoogleUser.token })
+        <script>
+            // Google OAuth 초기화
+            window.onload = function() {
+                google.accounts.id.initialize({
+                    client_id: '712225692257-1r53va7lq090ahslo7napiuigshe54p7.apps.googleusercontent.com',
+                    callback: handleCredentialResponse
                 });
                 
-                const data = await response.json();
-                
-                if (response.ok) {
-                    // 로그인 성공
-                    localStorage.setItem('currentUser', JSON.stringify(data.user));
-                    localStorage.setItem('authToken', data.token);
-                    window.location.href = 'index.html';
-                } else {
-                    showMessage(data.message, 'error');
+                // Google 로그인 버튼 렌더링
+                google.accounts.id.renderButton(
+                    document.getElementById('google-login-btn'),
+                    {
+                        theme: 'outline',
+                        size: 'large',
+                        width: '100%',
+                        text: 'signin_with',
+                        locale: 'ko'
+                    }
+                );
+            };
+
+            // Google 로그인 응답 처리
+            async function handleCredentialResponse(response) {
+                try {
+                    // JWT 토큰을 서버로 전송
+                    const serverResponse = await fetch('/api/google-login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            credential: response.credential 
+                        })
+                    });
+                    
+                    const data = await serverResponse.json();
+                    
+                    if (serverResponse.ok) {
+                        // 로그인 성공
+                        localStorage.setItem('currentUser', JSON.stringify(data.user));
+                        localStorage.setItem('authToken', data.token);
+                        window.location.href = 'index.html';
+                    } else {
+                        showMessage(data.message || '로그인에 실패했습니다.', 'error');
+                    }
+                    
+                } catch (error) {
+                    console.error('Google 로그인 오류:', error);
+                    showMessage('Google 로그인 중 오류가 발생했습니다.', 'error');
                 }
-                
-            } catch (error) {
-                showMessage('Google 로그인 중 오류가 발생했습니다.', 'error');
             }
-        });
-        
-        // 메시지 표시 함수
-        function showMessage(text, type) {
-            const messageEl = document.getElementById('auth-message');
-            messageEl.textContent = text;
-            messageEl.className = `auth-message ${type}`;
-        }
-    </script>
+            
+            // 메시지 표시 함수
+            function showMessage(text, type) {
+                const messageEl = document.getElementById('auth-message');
+                messageEl.textContent = text;
+                messageEl.className = `auth-message ${type}`;
+            }
+        </script>
 </body>
 </html>

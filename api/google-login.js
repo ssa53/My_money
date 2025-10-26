@@ -7,21 +7,29 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { googleToken } = req.body;
+    const { credential } = req.body;
 
-    if (!googleToken) {
-      return res.status(400).json({ message: 'Google token is required' });
+    if (!credential) {
+      return res.status(400).json({ message: 'Google credential is required' });
     }
 
-    // Google 토큰 검증 (실제로는 Google API로 검증해야 함)
-    // 여기서는 간단히 토큰을 디코딩하여 사용자 정보 추출
-    const decodedToken = jwt.decode(googleToken);
+    // Google JWT 토큰 검증 및 디코딩
+    const decodedToken = jwt.decode(credential);
     
     if (!decodedToken) {
-      return res.status(401).json({ message: 'Invalid Google token' });
+      return res.status(401).json({ message: 'Invalid Google credential' });
     }
 
-    const { email, name, picture } = decodedToken;
+    // 토큰 유효성 검증 (issuer, audience 체크)
+    if (decodedToken.iss !== 'https://accounts.google.com') {
+      return res.status(401).json({ message: 'Invalid token issuer' });
+    }
+
+    if (decodedToken.aud !== process.env.GOOGLE_CLIENT_ID) {
+      return res.status(401).json({ message: 'Invalid token audience' });
+    }
+
+    const { email, name, picture, sub } = decodedToken;
 
     // MongoDB 연결
     const client = await clientPromise;
@@ -36,6 +44,7 @@ module.exports = async function handler(req, res) {
         email,
         name,
         picture,
+        googleId: sub,
         provider: 'google',
         createdAt: new Date(),
         verified: true // Google 로그인은 이미 인증됨
@@ -43,6 +52,20 @@ module.exports = async function handler(req, res) {
 
       const result = await db.collection('users').insertOne(newUser);
       user = { ...newUser, _id: result.insertedId };
+    } else {
+      // 기존 사용자 정보 업데이트
+      await db.collection('users').updateOne(
+        { email },
+        { 
+          $set: { 
+            name,
+            picture,
+            googleId: sub,
+            lastLogin: new Date()
+          }
+        }
+      );
+      user = { ...user, name, picture, googleId: sub };
     }
 
     // JWT 토큰 생성
