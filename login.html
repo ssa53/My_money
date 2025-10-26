@@ -49,6 +49,19 @@
             <button type="button" class="back-to-login-btn">로그인으로 돌아가기</button>
         </form>
         
+        <!-- 이메일 인증 폼 (숨김) -->
+        <form id="email-verification-form" class="auth-form hidden">
+            <div class="verification-info">
+                <p>이메일로 인증번호를 발송했습니다.</p>
+                <p id="verification-email"></p>
+            </div>
+            <div class="form-group">
+                <input type="text" id="email-verification-code" placeholder="인증번호 6자리" maxlength="6" required>
+            </div>
+            <button type="submit" class="verify-btn">인증 완료</button>
+            <button type="button" class="back-to-login-btn">로그인으로 돌아가기</button>
+        </form>
+        
         <!-- 비밀번호 찾기 폼 (숨김) -->
         <form id="forgot-password-form" class="auth-form hidden">
             <div class="form-group">
@@ -113,30 +126,38 @@
         });
         
         // 로그인 폼 처리
-        document.getElementById('login-form').addEventListener('submit', function(e) {
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-password').value;
             
             if (email && password) {
-                const users = JSON.parse(localStorage.getItem('users') || '[]');
-                const user = users.find(u => u.email === email && u.password === password);
-                
-                if (user) {
-                    localStorage.setItem('currentUser', JSON.stringify({
-                        id: user.id,
-                        username: user.username,
-                        email: user.email
-                    }));
-                    window.location.href = 'index.html';
-                } else {
-                    showMessage('이메일 또는 비밀번호가 올바르지 않습니다.', 'error');
+                try {
+                    const response = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ email, password })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        // 로그인 성공
+                        localStorage.setItem('currentUser', JSON.stringify(data.user));
+                        window.location.href = 'index.html';
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                } catch (error) {
+                    showMessage('로그인 중 오류가 발생했습니다.', 'error');
                 }
             }
         });
         
         // 회원가입 폼 처리
-        document.getElementById('signup-form').addEventListener('submit', function(e) {
+        document.getElementById('signup-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const username = document.getElementById('signup-username').value.trim();
             const email = document.getElementById('signup-email').value.trim();
@@ -149,60 +170,92 @@
             }
             
             if (username && email && password) {
-                const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
-                const existingUser = existingUsers.find(u => u.email === email);
-                
-                if (existingUser) {
-                    showMessage('이미 가입된 이메일입니다.', 'error');
-                } else {
-                    const newUser = {
-                        id: Date.now().toString(),
-                        username: username,
-                        email: email,
-                        password: password,
-                        createdAt: new Date().toISOString()
-                    };
+                try {
+                    const response = await fetch('/api/signup', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ username, email, password })
+                    });
                     
-                    existingUsers.push(newUser);
-                    localStorage.setItem('users', JSON.stringify(existingUsers));
+                    const data = await response.json();
                     
-                    showMessage('회원가입이 완료되었습니다! 로그인해주세요.', 'success');
-                    showForm('login-form');
-                    this.reset();
+                    if (response.ok) {
+                        // 회원가입 성공, 이메일 인증 단계로
+                        document.getElementById('verification-email').textContent = email;
+                        showMessage('회원가입이 완료되었습니다. 이메일을 확인해주세요.', 'success');
+                        showForm('email-verification-form');
+                        this.reset();
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                } catch (error) {
+                    showMessage('회원가입 중 오류가 발생했습니다.', 'error');
                 }
             }
         });
         
+        // 이메일 인증 폼 처리
+        document.getElementById('email-verification-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('verification-email').textContent;
+            const verificationCode = document.getElementById('email-verification-code').value;
+            
+            try {
+                const response = await fetch('/api/verify-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, verificationCode })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('이메일 인증이 완료되었습니다! 로그인해주세요.', 'success');
+                    showForm('login-form');
+                    this.reset();
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('인증 중 오류가 발생했습니다.', 'error');
+            }
+        });
+        
         // 비밀번호 찾기 폼 처리
-        document.getElementById('forgot-password-form').addEventListener('submit', function(e) {
+        document.getElementById('forgot-password-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const email = document.getElementById('forgot-email').value.trim();
             
             if (email) {
-                const users = JSON.parse(localStorage.getItem('users') || '[]');
-                const user = users.find(u => u.email === email);
-                
-                if (user) {
-                    // 간단한 인증번호 생성 (실제로는 이메일 발송 필요)
-                    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+                try {
+                    const response = await fetch('/api/forgot-password', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ email })
+                    });
                     
-                    // 로컬 스토리지에 임시 저장
-                    localStorage.setItem('tempVerificationCode', verificationCode);
-                    localStorage.setItem('tempEmail', email);
+                    const data = await response.json();
                     
-                    // 실제 환경에서는 이메일로 발송
-                    alert(`인증번호: ${verificationCode}\n\n실제 환경에서는 이메일로 발송됩니다.`);
-                    
-                    showMessage('인증번호가 발송되었습니다. 이메일을 확인해주세요.', 'success');
-                    showForm('verify-code-form');
-                } else {
-                    showMessage('가입되지 않은 이메일입니다.', 'error');
+                    if (response.ok) {
+                        showMessage('인증번호가 발송되었습니다. 이메일을 확인해주세요.', 'success');
+                        showForm('verify-code-form');
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                } catch (error) {
+                    showMessage('인증번호 발송 중 오류가 발생했습니다.', 'error');
                 }
             }
         });
         
         // 인증번호 확인 폼 처리
-        document.getElementById('verify-code-form').addEventListener('submit', function(e) {
+        document.getElementById('verify-code-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const code = document.getElementById('verification-code').value;
             const newPassword = document.getElementById('new-password').value;
@@ -213,29 +266,25 @@
                 return;
             }
             
-            const savedCode = localStorage.getItem('tempVerificationCode');
-            const savedEmail = localStorage.getItem('tempEmail');
-            
-            if (code === savedCode && savedEmail) {
-                // 비밀번호 업데이트
-                const users = JSON.parse(localStorage.getItem('users') || '[]');
-                const userIndex = users.findIndex(u => u.email === savedEmail);
+            try {
+                const response = await fetch('/api/reset-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ code, newPassword })
+                });
                 
-                if (userIndex !== -1) {
-                    users[userIndex].password = newPassword;
-                    localStorage.setItem('users', JSON.stringify(users));
-                    
-                    // 임시 데이터 삭제
-                    localStorage.removeItem('tempVerificationCode');
-                    localStorage.removeItem('tempEmail');
-                    
+                const data = await response.json();
+                
+                if (response.ok) {
                     showMessage('비밀번호가 성공적으로 변경되었습니다.', 'success');
                     showForm('login-form');
                 } else {
-                    showMessage('사용자를 찾을 수 없습니다.', 'error');
+                    showMessage(data.message, 'error');
                 }
-            } else {
-                showMessage('인증번호가 올바르지 않습니다.', 'error');
+            } catch (error) {
+                showMessage('비밀번호 변경 중 오류가 발생했습니다.', 'error');
             }
         });
         

@@ -272,6 +272,25 @@ h1, h2, h3 {
     border: 1px solid #f5c6cb;
 }
 
+.verification-info {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.verification-info p {
+    margin: 5px 0;
+    color: #666;
+}
+
+.verification-info p:first-child {
+    font-weight: 600;
+    color: #333;
+}
+
 /* ================================== */
 /* 3. 메인 앱 레이아웃 */
 /* ================================== */
