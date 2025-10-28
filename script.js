@@ -334,9 +334,29 @@ function setupEventListeners() {
             console.log('삭제할 거래 ID:', transactionId); // 디버깅용
             
             if (confirm('정말 삭제하시겠습니까?')) {
-                transactions = transactions.filter(t => t._id !== transactionId);
-                localStorage.setItem('transactions', JSON.stringify(transactions));
-                console.log('거래 삭제 완료, 남은 거래 수:', transactions.length);
+                try {
+                    // 서버에서 거래내역 삭제
+                    const response = await fetch(`/api/transactions?id=${transactionId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        // 서버 삭제 성공 시 로컬에서도 삭제
+                        transactions = transactions.filter(t => t._id !== transactionId);
+                        localStorage.setItem('transactions', JSON.stringify(transactions));
+                        console.log('서버 및 로컬에서 거래 삭제 완료, 남은 거래 수:', transactions.length);
+                    } else {
+                        console.error('서버에서 거래 삭제 실패');
+                        alert('거래 삭제에 실패했습니다. 다시 시도해주세요.');
+                        return;
+                    }
+                } catch (error) {
+                    console.error('네트워크 오류:', error);
+                    // 오프라인 모드: 로컬에서만 삭제
+                    transactions = transactions.filter(t => t._id !== transactionId);
+                    localStorage.setItem('transactions', JSON.stringify(transactions));
+                    console.log('오프라인 모드: 로컬에서 거래 삭제 완료, 남은 거래 수:', transactions.length);
+                }
                 
                 const activePage = document.querySelector('.menu-item.active').dataset.page;
                 if (activePage === 'asset-management-page') updateAllUI();
@@ -401,11 +421,35 @@ function setupEventListeners() {
                     target.innerHTML = '';
                     target.appendChild(input);
                     input.focus();
-                    const saveUpdate = () => {
+                    const saveUpdate = async () => {
                         const newValue = (field === 'amount') ? parseFloat(input.value.replace(/,/g, '')) || 0 : input.value;
                         if (newValue !== currentValue) {
                             transaction[field] = newValue;
-                            localStorage.setItem('transactions', JSON.stringify(transactions));
+                            
+                            try {
+                                // 서버에서 거래내역 수정
+                                const response = await fetch(`/api/transactions?id=${transactionId}`, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({ [field]: newValue })
+                                });
+                                
+                                if (response.ok) {
+                                    localStorage.setItem('transactions', JSON.stringify(transactions));
+                                    console.log('서버 및 로컬에서 거래 수정 완료');
+                                } else {
+                                    console.error('서버에서 거래 수정 실패');
+                                    alert('거래 수정에 실패했습니다. 다시 시도해주세요.');
+                                    return;
+                                }
+                            } catch (error) {
+                                console.error('네트워크 오류:', error);
+                                // 오프라인 모드: 로컬에서만 수정
+                                localStorage.setItem('transactions', JSON.stringify(transactions));
+                                console.log('오프라인 모드: 로컬에서 거래 수정 완료');
+                            }
                         }
                         const activePage = document.querySelector('.menu-item.active').dataset.page;
                         if (activePage === 'asset-management-page') updateAllUI();
@@ -555,25 +599,74 @@ function setupEventListeners() {
     }
 
     if (modalAssetList) {
-        modalAssetList.addEventListener('click', (event) => {
+        modalAssetList.addEventListener('click', async (event) => {
             if (event.target.classList.contains('delete-btn')) {
                 const item = event.target.closest('li');
                 const assetId = item.dataset.id;
                 if (confirm('이 자산을 정말 삭제하시겠습니까?')) {
-                    assets = assets.filter(a => a._id !== assetId);
-                    localStorage.setItem('assets', JSON.stringify(assets));
-                    item.remove();
+                    try {
+                        // 서버에서 자산 삭제
+                        const response = await fetch(`/api/assets?id=${assetId}`, {
+                            method: 'DELETE'
+                        });
+                        
+                        if (response.ok) {
+                            // 서버 삭제 성공 시 로컬에서도 삭제
+                            assets = assets.filter(a => a._id !== assetId);
+                            localStorage.setItem('assets', JSON.stringify(assets));
+                            item.remove();
+                            console.log('서버 및 로컬에서 자산 삭제 완료');
+                        } else {
+                            console.error('서버에서 자산 삭제 실패');
+                            alert('자산 삭제에 실패했습니다. 다시 시도해주세요.');
+                            return;
+                        }
+                    } catch (error) {
+                        console.error('네트워크 오류:', error);
+                        // 오프라인 모드: 로컬에서만 삭제
+                        assets = assets.filter(a => a._id !== assetId);
+                        localStorage.setItem('assets', JSON.stringify(assets));
+                        item.remove();
+                        console.log('오프라인 모드: 로컬에서 자산 삭제 완료');
+                    }
                 }
             }
         });
-        modalAssetList.addEventListener('change', (event) => {
+        modalAssetList.addEventListener('change', async (event) => {
             if (event.target.tagName === 'INPUT') {
                 const item = event.target.closest('li');
                 const assetId = item.dataset.id;
                 const newAmount = parseFloat(event.target.value) || 0;
                 const assetToUpdate = assets.find(a => a._id === assetId);
-                if(assetToUpdate) assetToUpdate.amount = newAmount;
-                localStorage.setItem('assets', JSON.stringify(assets));
+                
+                if(assetToUpdate) {
+                    assetToUpdate.amount = newAmount;
+                    
+                    try {
+                        // 서버에서 자산 수정
+                        const response = await fetch(`/api/assets?id=${assetId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ amount: newAmount })
+                        });
+                        
+                        if (response.ok) {
+                            localStorage.setItem('assets', JSON.stringify(assets));
+                            console.log('서버 및 로컬에서 자산 수정 완료');
+                        } else {
+                            console.error('서버에서 자산 수정 실패');
+                            alert('자산 수정에 실패했습니다. 다시 시도해주세요.');
+                            return;
+                        }
+                    } catch (error) {
+                        console.error('네트워크 오류:', error);
+                        // 오프라인 모드: 로컬에서만 수정
+                        localStorage.setItem('assets', JSON.stringify(assets));
+                        console.log('오프라인 모드: 로컬에서 자산 수정 완료');
+                    }
+                }
             }
         });
     }
@@ -587,16 +680,42 @@ function setupEventListeners() {
     }
     
     if (clearDataBtn) {
-        clearDataBtn.addEventListener('click', () => {
+        clearDataBtn.addEventListener('click', async () => {
             if (!checkAuth()) return;
             if (confirm('정말로 모든 거래내역과 자산을 삭제하시겠습니까?')) {
-                transactions = [];
-                assets = [];
-                localStorage.setItem('transactions', JSON.stringify(transactions));
-                localStorage.setItem('assets', JSON.stringify(assets));
-                updateAllUI();
-                renderCalendar(new Date());
-                renderStatistics('monthly');
+                try {
+                    // 서버에서 모든 데이터 삭제
+                    const response = await fetch(`/api/data?userId=${currentUser.id || currentUser._id}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        // 서버 삭제 성공 시 로컬에서도 삭제
+                        transactions = [];
+                        assets = [];
+                        localStorage.setItem('transactions', JSON.stringify(transactions));
+                        localStorage.setItem('assets', JSON.stringify(assets));
+                        updateAllUI();
+                        renderCalendar(new Date());
+                        renderStatistics('monthly');
+                        console.log('서버 및 로컬에서 모든 데이터 삭제 완료');
+                    } else {
+                        console.error('서버에서 데이터 삭제 실패');
+                        alert('데이터 삭제에 실패했습니다. 다시 시도해주세요.');
+                        return;
+                    }
+                } catch (error) {
+                    console.error('네트워크 오류:', error);
+                    // 오프라인 모드: 로컬에서만 삭제
+                    transactions = [];
+                    assets = [];
+                    localStorage.setItem('transactions', JSON.stringify(transactions));
+                    localStorage.setItem('assets', JSON.stringify(assets));
+                    updateAllUI();
+                    renderCalendar(new Date());
+                    renderStatistics('monthly');
+                    console.log('오프라인 모드: 로컬에서 모든 데이터 삭제 완료');
+                }
             }
         });
     }
