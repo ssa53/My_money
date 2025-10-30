@@ -301,6 +301,29 @@ async function loadAllData() {
     }
     
     if (loadingSpinner) loadingSpinner.style.display = 'none';
+
+    // ★ 미동기화 거래내역 동기화 시도 (로그인 상태 + 서버 fetch 후)
+    if(currentUser) {
+        try {
+            let pending = JSON.parse(localStorage.getItem('pendingTransactions') || '[]');
+            if(pending.length > 0) {
+                let synced = [];
+                for(const tr of pending) {
+                    const result = await fetch('/api/transactions', {
+                        method: 'POST',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify(tr)
+                    });
+                    if(result.ok) synced.push(tr);
+                }
+                if(synced.length > 0) {
+                    // 성공적으로 동기화된 거래내역만 pending에서 제거
+                    pending = pending.filter(tr => !synced.some(s => s._id === tr._id));
+                    localStorage.setItem('pendingTransactions', JSON.stringify(pending));
+                }
+            }
+        } catch(e) { console.error('미동기화 거래내역 동기화 실패', e); }
+    }
 }
 
 function initialize() {
@@ -525,6 +548,10 @@ function setupEventListeners() {
                 // 오프라인 모드: 로컬 스토리지만 사용
                 transactions.unshift(newTransaction);
                 localStorage.setItem('transactions', JSON.stringify(transactions));
+                // 미동기화 내역 따로 저장
+                let pending = JSON.parse(localStorage.getItem('pendingTransactions') || '[]');
+                pending.unshift(newTransaction);
+                localStorage.setItem('pendingTransactions', JSON.stringify(pending));
                 updateAllUI();
                 formEl.reset();
                 if(dateEl) dateEl.valueAsDate = new Date();
